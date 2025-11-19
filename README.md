@@ -8,5 +8,6 @@ Contents:
 
 Instructions:
 - Run `windows/setup-windows.ps1` from an elevated PowerShell prompt on Windows.
-- Inside Ubuntu on WSL, execute `bash wsl/bootstrap-wsl.sh`.
+- Inside Ubuntu on WSL, ensure the repository path exists by running `mkdir -p ~/src/github.com/nickrwann` before bootstrapping.
+- Execute `bash wsl/bootstrap-wsl.sh` from the repo root. The script will clone or update `https://github.com/nickrwann/dev-setup` into `~/src/github.com/nickrwann/dev-setup` (or a custom `REPO_URL`) and then link its dotfiles.
 - Dotfiles live in the `dotfiles/` folder; edit them directly to change your defaults.
