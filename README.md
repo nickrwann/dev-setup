@@ -1,23 +1,12 @@
-# dev-setup
+Purpose:
+Personal repo for bringing a new dev machine online.
 
-A minimal repository for documenting and automating my development environment setup.
+Contents:
+- `windows` holds scripts for preparing a Windows host.
+- `wsl` includes bootstrap scripts for Ubuntu inside WSL.
+- `dotfiles` contains shell, git, and VS Code configs.
 
-## Purpose
-
-This repo holds scripts, dotfiles, and notes for setting up a development environment quickly and reproducibly.
-
-## Getting started
-
-1. Clone the repo:
-
-   git clone https://github.com/nickrwann/dev-setup.git
-
-2. Review the files and follow the instructions in each script or dotfile.
-
-## Contributing
-
-Contributions and improvements are welcome — open an issue or submit a PR.
-
-## License
-
-Add a license file if you want this repo to have one.
+Instructions:
+- Run `windows/setup-windows.ps1` from an elevated PowerShell prompt on Windows.
+- Inside Ubuntu on WSL, execute `bash wsl/bootstrap-wsl.sh`.
+- Dotfiles live in the `dotfiles/` folder; edit them directly to change your defaults.
