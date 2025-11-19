@@ -10,3 +10,4 @@ Instructions:
 - Run `windows/setup-windows.ps1` from an elevated PowerShell prompt on Windows.
 - Inside Ubuntu on WSL, execute `bash wsl/setup-wsl.sh`.
 - Dotfiles live in the `dotfiles/` folder; edit them directly to change your defaults.
+- The WSL bootstrap script clones this repo into `~/src/github.com/nickrwann/dev-setup` and symlinks dotfiles from there.

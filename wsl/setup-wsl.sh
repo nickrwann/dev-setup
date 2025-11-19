@@ -3,6 +3,9 @@ set -euo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
 
+REPO_BASE="$HOME/src/github.com/nickrwann"
+DEV_SETUP_DIR="$REPO_BASE/dev-setup"
+
 sudo apt update
 sudo apt install -y \
   build-essential \
@@ -27,12 +30,16 @@ if command -v starship >/dev/null 2>&1; then
   starship preset bracketed-segments -o "$HOME/.config/starship.toml"
 fi
 
-if [ ! -d "$HOME/src/tooling/dev-env" ]; then
-  git clone https://github.com/<your-name-here>/dev-env ~/src/tooling/dev-env
+mkdir -p "$REPO_BASE"
+
+if [ -d "$DEV_SETUP_DIR/.git" ]; then
+  git -C "$DEV_SETUP_DIR" pull --ff-only
+else
+  git clone https://github.com/nickrwann/dev-setup "$DEV_SETUP_DIR"
 fi
 
-ln -sf ~/src/tooling/dev-env/dotfiles/bash/.bashrc ~/.bashrc
-ln -sf ~/src/tooling/dev-env/dotfiles/git/.gitconfig ~/.gitconfig
+ln -sf "$DEV_SETUP_DIR/dotfiles/bash/.bashrc" ~/.bashrc
+ln -sf "$DEV_SETUP_DIR/dotfiles/git/.gitconfig" ~/.gitconfig
 
 if ! command -v uv >/dev/null 2>&1; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
