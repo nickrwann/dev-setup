@@ -1,0 +1,16 @@
+[user]
+    name = Nick Wanner
+    email = nickrwann@gmail.com
+
+[core]
+    editor = code --wait
+    autocrlf = input
+
+[alias]
+    st = status
+    co = checkout
+    br = branch
+    lg = log --oneline --graph --decorate
+
+[pull]
+    rebase = false
