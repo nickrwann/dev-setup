@@ -16,8 +16,6 @@ sudo apt install -y \
   fd-find \
   fzf
 
-mkdir -p ~/src/{personal,work,tooling}
-
 if [ ! -d "$HOME/src/tooling/dev-env" ]; then
   git clone https://github.com/<your-name-here>/dev-env ~/src/tooling/dev-env
 fi
