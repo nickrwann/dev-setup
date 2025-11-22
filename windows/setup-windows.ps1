@@ -100,3 +100,17 @@ Note-RegistryPendingRenames
 
 # --- Prompt for reboot -------------------------------------------------------
 Handle-PendingReboot
+
+# --- Stage repo into WSL and run WSL setup ----------------------------------
+if ($pendingRebootReasons.Count -eq 0) {
+    $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
+    $wslRepoPath = (& wsl -- wslpath -a "$repoRoot").Trim()
+
+    Write-Host "Copying dev-setup into WSL home..."
+    wsl -- bash -lc "mkdir -p ~/src/github.com/nickrwann && cp -r '$wslRepoPath' ~/src/github.com/nickrwann/"
+
+    Write-Host "Running WSL bootstrap script..."
+    wsl -- bash -lc "bash ~/src/github.com/nickrwann/dev-setup/wsl/setup-wsl.sh"
+} else {
+    Write-Warning 'Skipping WSL repo copy and bootstrap until after reboot.'
+}
