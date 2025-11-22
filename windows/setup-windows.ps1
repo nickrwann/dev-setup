@@ -1,4 +1,61 @@
 # Bootstrap core Windows tools. VS Code extensions are installed from the WSL side.
+
+# --- Configuration -----------------------------------------------------------
+$pendingRebootReasons = @()
+$resumeMarkerPath = Join-Path $env:ProgramData "dev-setup\resume-setup-windows.txt"
+
+# --- Pending reboot detection -----------------------------------------------
+function Add-PendingRebootReason {
+    param([string]$Reason)
+    if (-not [string]::IsNullOrWhiteSpace($Reason)) { $script:pendingRebootReasons += $Reason }
+}
+
+function Note-DismRestartRequirement {
+    param([int]$ExitCode, [string]$Context)
+    if ($ExitCode -in 3010, 1641) { Add-PendingRebootReason("$Context reported restart required (exit code $ExitCode).") }
+}
+
+function Note-RegistryPendingRenames {
+    $key = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue
+    if ($null -ne $key -and $null -ne $key.PendingFileRenameOperations -and $key.PendingFileRenameOperations.Count -gt 0) {
+        Add-PendingRebootReason('Pending file rename operations detected in the registry.')
+    }
+}
+
+# --- Reboot handling ---------------------------------------------------------
+function Save-ResumeMarker {
+    param([string]$Reason)
+    $markerDirectory = Split-Path $resumeMarkerPath -Parent
+    if (-not (Test-Path $markerDirectory)) { New-Item -ItemType Directory -Path $markerDirectory -Force | Out-Null }
+
+    @(
+        'Resume setup-windows.ps1 after reboot',
+        "Reason: $Reason",
+        "Timestamp: $(Get-Date -Format 's')",
+        "ScriptPath: $PSCommandPath"
+    ) | Set-Content -Path $resumeMarkerPath -Encoding UTF8
+    Write-Host "Saved resume marker to $resumeMarkerPath"
+}
+
+function Handle-PendingReboot {
+    if ($pendingRebootReasons.Count -eq 0) { return }
+
+    Write-Host "A system reboot is required before Ubuntu/WSL can be used:" -ForegroundColor Yellow
+    $pendingRebootReasons | ForEach-Object { Write-Host " - $_" -ForegroundColor Yellow }
+
+    if ((Read-Host 'Reboot now? (Y/N)') -match '^[Yy]') {
+        Save-ResumeMarker -Reason 'Pending reboot detected after setup-windows.ps1'
+        Write-Host 'Initiating reboot...' -ForegroundColor Cyan
+        Restart-Computer -Force
+        return
+    }
+
+    Write-Warning 'Ubuntu/WSL will not be usable until after a reboot.'
+    Write-Host "After restarting, re-run setup-windows.ps1 to resume. If a resume marker was created, it is stored at $resumeMarkerPath." -ForegroundColor Cyan
+}
+
+# --- Install core tools ------------------------------------------------------
+Write-Host 'Installing core Windows tools via winget...'
 winget install --id Microsoft.WindowsTerminal -e --source winget
 winget install --id Microsoft.VisualStudioCode -e --source winget
 winget install --id Git.Git -e --source winget --scope machine
@@ -6,6 +63,8 @@ winget install --id GitHub.GitHubDesktop -e --source winget
 winget install --id Docker.DockerDesktop -e --source winget
 winget install --id Spotify.Spotify -e --source winget
 
+# --- Install WSL and detect reboot need -------------------------------------
+Write-Host 'Installing WSL with Ubuntu 22.04...'
 function Write-WslUpdateGuidance {
     param([string]$Output)
 
@@ -36,3 +95,8 @@ Invoke-WslUpdate
 
 Write-Host "Installing WSL distro: Ubuntu-22.04"
 wsl --install -d Ubuntu-22.04
+Note-DismRestartRequirement -ExitCode $LASTEXITCODE -Context 'WSL install'
+Note-RegistryPendingRenames
+
+# --- Prompt for reboot -------------------------------------------------------
+Handle-PendingReboot
