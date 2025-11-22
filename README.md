@@ -2,7 +2,7 @@
 Personal repo for bringing a new dev machine online with predictable defaults and editor tooling.
 
 ## What lives here
-- `windows/` installs the base tools on Windows and kicks off WSL.
+- `windows/` installs the base tools on Windows (including Git for Windows) and kicks off WSL.
 - `wsl/` bootstraps Ubuntu inside WSL, installs CLI tools, and wires dotfiles.
 - `dotfiles/` holds bash, git, and VS Code defaults (settings, keybindings, extensions list).
 
