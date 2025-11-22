@@ -1,116 +1,67 @@
-# Bootstrap core Windows tools. VS Code extensions are installed from the WSL side.
+# Bootstraps core Windows tools and installs WSL/Ubuntu 22.04.
+# Run this in an elevated PowerShell session first on a new machine.
 
-# --- Configuration -----------------------------------------------------------
-$pendingRebootReasons = @()
-$resumeMarkerPath = Join-Path $env:ProgramData "dev-setup\resume-setup-windows.txt"
-
-# --- Pending reboot detection -----------------------------------------------
-function Add-PendingRebootReason {
-    param([string]$Reason)
-    if (-not [string]::IsNullOrWhiteSpace($Reason)) { $script:pendingRebootReasons += $Reason }
+# Verify script is running as Administrator so winget and WSL can change system state.
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
+    Write-Error "Please run this script in an elevated PowerShell session (Run as Administrator)."
+    exit 1
 }
 
-function Note-DismRestartRequirement {
-    param([int]$ExitCode, [string]$Context)
-    if ($ExitCode -in 3010, 1641) { Add-PendingRebootReason("$Context reported restart required (exit code $ExitCode).") }
-}
+Write-Host "Installing core Windows tools via winget..." -ForegroundColor Cyan
 
-function Note-RegistryPendingRenames {
-    $key = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue
-    if ($null -ne $key -and $null -ne $key.PendingFileRenameOperations -and $key.PendingFileRenameOperations.Count -gt 0) {
-        Add-PendingRebootReason('Pending file rename operations detected in the registry.')
-    }
-}
-
-# --- Reboot handling ---------------------------------------------------------
-function Save-ResumeMarker {
-    param([string]$Reason)
-    $markerDirectory = Split-Path $resumeMarkerPath -Parent
-    if (-not (Test-Path $markerDirectory)) { New-Item -ItemType Directory -Path $markerDirectory -Force | Out-Null }
-
-    @(
-        'Resume setup-windows.ps1 after reboot',
-        "Reason: $Reason",
-        "Timestamp: $(Get-Date -Format 's')",
-        "ScriptPath: $PSCommandPath"
-    ) | Set-Content -Path $resumeMarkerPath -Encoding UTF8
-    Write-Host "Saved resume marker to $resumeMarkerPath"
-}
-
-function Handle-PendingReboot {
-    if ($pendingRebootReasons.Count -eq 0) { return }
-
-    Write-Host "A system reboot is required before Ubuntu/WSL can be used:" -ForegroundColor Yellow
-    $pendingRebootReasons | ForEach-Object { Write-Host " - $_" -ForegroundColor Yellow }
-
-    if ((Read-Host 'Reboot now? (Y/N)') -match '^[Yy]') {
-        Save-ResumeMarker -Reason 'Pending reboot detected after setup-windows.ps1'
-        Write-Host 'Initiating reboot...' -ForegroundColor Cyan
-        Restart-Computer -Force
-        return
-    }
-
-    Write-Warning 'Ubuntu/WSL will not be usable until after a reboot.'
-    Write-Host "After restarting, re-run setup-windows.ps1 to resume. If a resume marker was created, it is stored at $resumeMarkerPath." -ForegroundColor Cyan
-}
-
-# --- Install core tools ------------------------------------------------------
-Write-Host 'Installing core Windows tools via winget...'
+# Core terminal and editor.
 winget install --id Microsoft.WindowsTerminal -e --source winget
 winget install --id Microsoft.VisualStudioCode -e --source winget
+
+# Git tooling.
 winget install --id Git.Git -e --source winget --scope machine
 winget install --id GitHub.GitHubDesktop -e --source winget
+
+# Docker for local Kubernetes and containers.
 winget install --id Docker.DockerDesktop -e --source winget
+
+# Optional quality of life app.
 winget install --id Spotify.Spotify -e --source winget
 
-# --- Install WSL and detect reboot need -------------------------------------
-Write-Host 'Installing WSL with Ubuntu 22.04...'
-function Write-WslUpdateGuidance {
-    param([string]$Output)
+# Note: "tree" is already available on Windows via the built-in tree.exe command.
 
-    if ($Output -match "administrator" -or $Output -match "elevated") {
-        Write-Warning "WSL updates require an elevated PowerShell session. Re-run this script as Administrator or run 'wsl --update' from an elevated prompt."
-    }
-    if ($Output -match "feature" -and ($Output -match "Virtual Machine Platform" -or $Output -match "Windows Subsystem for Linux" -or $Output -match "optional component")) {
-        Write-Warning "Required Windows features for WSL are not enabled yet. Run 'wsl --install' from an elevated prompt to enable them, reboot if prompted, then re-run this script."
-    }
+Write-Host ""
+Write-Host "Updating WSL (if present)..." -ForegroundColor Cyan
+
+try {
+    # Update WSL components if they are already installed.
+    & wsl --update
+} catch {
+    # On a fresh machine this may fail before WSL is installed. That is fine.
+    Write-Warning "WSL update failed or WSL is not installed yet. Continuing."
 }
 
-function Invoke-WslUpdate {
-    Write-Host "Updating WSL..."
-    $updateOutput = & wsl --update 2>&1
+Write-Host ""
+Write-Host "Installing WSL with Ubuntu 22.04..." -ForegroundColor Cyan
+
+$exitCode = 0
+try {
+    # Install default WSL features plus the Ubuntu 22.04 distro.
+    & wsl --install -d Ubuntu-22.04
     $exitCode = $LASTEXITCODE
-
-    if ($updateOutput) {
-        Write-Host $updateOutput
-    }
-
-    if ($exitCode -ne 0) {
-        Write-Warning "WSL update failed with exit code $exitCode."
-        Write-WslUpdateGuidance -Output ($updateOutput -join "`n")
-    }
+} catch {
+    Write-Warning "WSL install command failed: $($_.Exception.Message)"
+    $exitCode = 1
 }
 
-Invoke-WslUpdate
+Write-Host ""
 
-Write-Host "Installing WSL distro: Ubuntu-22.04"
-wsl --install -d Ubuntu-22.04
-Note-DismRestartRequirement -ExitCode $LASTEXITCODE -Context 'WSL install'
-Note-RegistryPendingRenames
-
-# --- Prompt for reboot -------------------------------------------------------
-Handle-PendingReboot
-
-# --- Stage repo into WSL and run WSL setup ----------------------------------
-if ($pendingRebootReasons.Count -eq 0) {
-    $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
-    $wslRepoPath = (& wsl -- wslpath -a "$repoRoot").Trim()
-
-    Write-Host "Copying dev-setup into WSL home..."
-    wsl -- bash -lc "mkdir -p ~/src/github.com/nickrwann && cp -r '$wslRepoPath' ~/src/github.com/nickrwann/"
-
-    Write-Host "Running WSL bootstrap script..."
-    wsl -- bash -lc "bash ~/src/github.com/nickrwann/dev-setup/wsl/setup-wsl.sh"
-} else {
-    Write-Warning 'Skipping WSL repo copy and bootstrap until after reboot.'
+if ($exitCode -eq 0) {
+    # Typical case once WSL and Ubuntu are installed.
+    Write-Host "WSL install command completed. If Windows requested a reboot, reboot now." -ForegroundColor Green
+} else 
+    # On first install, nonzero often means features were enabled and a reboot is pending.
+    Write-Warning "WSL install reported a nonzero exit code ($exitCode)."
+    Write-Host "On a fresh machine this usually means Windows needs a reboot to finish enabling WSL features." -ForegroundColor Yellow
 }
+
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Host "  1. Reboot Windows if you were prompted to do so."
+Write-Host "  2. Open Ubuntu 22.04 from the Start menu once and complete its first-time setup."
+Write-Host "  3. Then run: dev-setup\\windows\\setup-wsl.ps1"
