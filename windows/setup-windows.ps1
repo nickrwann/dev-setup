@@ -4,4 +4,6 @@ winget install --id Git.Git -e --source winget
 winget install --id GitHub.GitHubDesktop -e --source winget
 winget install --id Docker.DockerDesktop -e --source winget
 
+winget install --id Spotify.Spotify -e --source winget
+
 wsl --install -d Ubuntu-22.04
