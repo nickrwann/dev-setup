@@ -66,11 +66,11 @@ fi
 # Ensure the repo base directory exists.
 mkdir -p "$REPO_BASE"
 
-# If dev-setup is already cloned, keep it up to date. Otherwise clone fresh.
-if [ -d "$DEV_SETUP_DIR/.git" ]; then
-  git -C "$DEV_SETUP_DIR" pull --ff-only
-else
-  git clone https://github.com/nickrwann/dev-setup "$DEV_SETUP_DIR"
+# At this point setup-wsl.ps1 should have copied the repo here.
+if [ ! -d "$DEV_SETUP_DIR" ]; then
+  echo "Expected dev-setup repo at: $DEV_SETUP_DIR"
+  echo "It was not found. Run windows/setup-wsl.ps1 again or clone the repo manually."
+  exit 1
 fi
 
 # Link bash and git dotfiles from the repo into $HOME.
