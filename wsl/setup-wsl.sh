@@ -81,6 +81,7 @@ if command -v starship >/dev/null 2>&1; then
 
 [directory]
 truncation_length = 0
+truncate_to_repo = false
 EOF
 else
   echo "Starship installation appears to have failed. Prompt will not be customized."
