@@ -76,6 +76,12 @@ if command -v starship >/dev/null 2>&1; then
   mkdir -p "$HOME/.config"
   # This overwrites any existing starship.toml with the bracketed preset.
   starship preset bracketed-segments -o "$HOME/.config/starship.toml"
+  # Ensure directory paths are not truncated (show full path in the prompt).
+  cat <<'EOF' >> "$HOME/.config/starship.toml"
+
+[directory]
+truncation_length = 0
+EOF
 else
   echo "Starship installation appears to have failed. Prompt will not be customized."
 fi

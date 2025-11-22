@@ -12,7 +12,7 @@ Bring a new Windows machine online with predictable defaults, WSL, and editor to
 3. **Inside WSL**: the bootstrap (`wsl/setup-wsl.sh`) updates apt, installs build essentials and CLI tooling (ripgrep, fd, fzf, tree), installs and configures Starship, links bash/git dotfiles, ensures Starship init is appended once, installs `uv` if missing, and applies the VS Code extensions/settings in `dotfiles/vscode/` when `code` is available.
 
 ## Included tooling
-- Bash aliases and Starship prompt via `dotfiles/bash/.bashrc`.
+- Bash aliases and Starship prompt via `dotfiles/bash/.bashrc`; Starship is configured with the bracketed segments preset and a full (non-truncated) directory path.
 - Git defaults in `dotfiles/git/.gitconfig`.
 - VS Code settings, keybindings, and extensions in `dotfiles/vscode/` (Codex extension is pre-listed).
 - WSL bootstrap installs build essentials, uv, ripgrep/fd/fzf/tree, and applies the VS Code extension list when available.
