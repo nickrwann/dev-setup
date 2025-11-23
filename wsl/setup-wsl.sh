@@ -45,7 +45,7 @@ install_vscode_extensions() {
   fi
 }
 
-echo "[1/5] Updating apt and installing core CLI tools..."
+echo "[1/6] Updating apt and installing core CLI tools..."
 
 # Update package index and install core CLI tools and build dependencies.
 sudo apt update
@@ -56,6 +56,7 @@ sudo apt install -y \
   libffi-dev \
   zlib1g-dev \
   curl \
+  gnupg \
   git \
   unzip \
   ca-certificates \
@@ -64,7 +65,7 @@ sudo apt install -y \
   fzf \
   tree
 
-echo "[2/5] Installing and configuring starship prompt..."
+echo "[2/6] Installing and configuring starship prompt..."
 
 # Install starship prompt if it is not already present.
 if ! command -v starship >/dev/null 2>&1; then
@@ -87,7 +88,7 @@ else
   echo "Starship installation appears to have failed. Prompt will not be customized."
 fi
 
-echo "[3/5] Verifying dev-setup repo location..."
+echo "[3/6] Verifying dev-setup repo location..."
 
 # Ensure the repo base directory exists.
 mkdir -p "$REPO_BASE"
@@ -101,7 +102,7 @@ fi
 
 echo "Found dev-setup at: $DEV_SETUP_DIR"
 
-echo "[4/5] Linking dotfiles and configuring shell..."
+echo "[4/6] Linking dotfiles and configuring shell..."
 
 # Link bash and git dotfiles from the repo into $HOME.
 ln -sf "$DEV_SETUP_DIR/dotfiles/bash/.bashrc" "$HOME/.bashrc"
@@ -116,7 +117,24 @@ if ! grep -q 'starship init bash' "$HOME/.bashrc"; then
   } >> "$HOME/.bashrc"
 fi
 
-echo "[5/5] Installing uv (Python toolchain) if missing..."
+echo "[5/6] Installing Docker Engine via apt (Ubuntu repo)..."
+
+# Install Docker if it is not already present.
+if command -v docker >/dev/null 2>&1; then
+  echo "Docker already installed."
+else
+  sudo apt install -y \
+    docker.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+  # Allow the current user to run Docker without sudo after reloading groups.
+  if ! id -nG "$USER" | tr ' ' '\n' | grep -qx docker; then
+    sudo usermod -aG docker "$USER" || true
+  fi
+fi
+
+echo "[6/6] Installing uv (Python toolchain) if missing..."
 
 # Install uv if it is not already present.
 if ! command -v uv >/dev/null 2>&1; then
