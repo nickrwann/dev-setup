@@ -119,14 +119,24 @@ fi
 
 echo "[5/6] Installing Docker Engine via apt (Ubuntu repo)..."
 
-# Install Docker if it is not already present.
-if command -v docker >/dev/null 2>&1; then
-  echo "Docker already installed."
+# Install Docker if it is not already installed via Ubuntu packages.
+if dpkg -s docker.io >/dev/null 2>&1; then
+  echo "Docker already installed via docker.io."
 else
-  sudo apt install -y \
-    docker.io \
-    docker-buildx-plugin \
-    docker-compose-plugin
+  docker_packages=(docker.io)
+
+  # Prefer plugins if the distro provides them; otherwise fall back to docker-compose.
+  if apt-cache show docker-buildx-plugin >/dev/null 2>&1; then
+    docker_packages+=(docker-buildx-plugin)
+  fi
+
+  if apt-cache show docker-compose-plugin >/dev/null 2>&1; then
+    docker_packages+=(docker-compose-plugin)
+  else
+    docker_packages+=(docker-compose)
+  fi
+
+  sudo apt install -y "${docker_packages[@]}"
 
   # Allow the current user to run Docker without sudo after reloading groups.
   if ! id -nG "$USER" | tr ' ' '\n' | grep -qx docker; then
